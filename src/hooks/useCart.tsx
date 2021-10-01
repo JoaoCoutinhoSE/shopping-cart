@@ -1,4 +1,10 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+import {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { toast } from "react-toastify";
 import { api } from "../services/api";
 import { Product, Stock } from "../types";
@@ -32,21 +38,37 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     return [];
   });
 
+  const sendErrorToast = () => {
+    return toast.error("Erro na alteração de quantidade do produto");
+  };
+
   const addProduct = async (productId: number) => {
     try {
-      // TODO
-      const foundItem = cart.find((product) => product.id === productId);
+      const updatedCart = [...cart];
+      const foundItem = updatedCart.find((product) => product.id === productId);
+      const itemAmount = foundItem ? foundItem.amount : 0;
 
-      if (foundItem) {
-        // Update cart amount
+      const stock = api.get<Product>(`/products/${productId}`);
 
-        // Update value of the cart
-        localStorage.setItem("@RocketShoes:cart", JSON.stringify(cart));
+      const stockAmount = (await stock).data.amount;
+      const amount = itemAmount + 1;
+
+      if (amount > stockAmount) {
+        toast.error("Quantidade solicitada fora de estoque");
       }
 
-      setCart(localStorage.setItem("@RocketShoes:cart"));
+      if (foundItem) {
+        foundItem.amount = amount;
+      } else {
+        const item = api.get<Product>(`/products/${productId}`);
+
+        const newItem = { ...(await item).data, amount: 1 };
+        updatedCart.push(newItem);
+      }
+
+      setCart(updatedCart);
     } catch {
-      // TODO
+      sendErrorToast();
     }
   };
 
@@ -54,7 +76,7 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     try {
       // TODO
     } catch {
-      // TODO
+      sendErrorToast();
     }
   };
 
